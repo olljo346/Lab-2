@@ -16,6 +16,7 @@
 #include <signal.h>
 #define PORT "4950"		// the port users will be connecting to
 #define BACKLOG 10		// how many pending connections queue will hold
+#define MAXDATASIZE 100
 
 void sigchld_handler (int s)
 {
@@ -37,11 +38,13 @@ void *get_in_addr (struct sockaddr *sa)
 
 int main (void)
 {
-  int sockfd, new_fd;		// listen on sock_fd, new connection on new_fd
+  int sockfd, new_fd,numbytes;		// listen on sock_fd, new connection on new_fd
+    char buf[MAXDATASIZE];
   struct addrinfo hints, *servinfo, *p;
   struct sockaddr_storage their_addr;	// connector's address information
   socklen_t sin_size;
   struct sigaction sa;
+  socklen_t addr_len;
   int yes = 1;
   char s[INET6_ADDRSTRLEN];
   int rv;
@@ -49,31 +52,37 @@ int main (void)
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;	// use my IP
+  printf("the beginning\n");
   if ((rv = getaddrinfo (NULL, PORT, &hints, &servinfo)) != 0)
     {
       fprintf (stderr, "getaddrinfo: %s\n", gai_strerror (rv));
       return 1;
+      printf("getaddrinfo\n");
     }
 // loop through all the results and bind to the first we can
   for (p = servinfo; p != NULL; p = p->ai_next)
     {
+      printf("servinfo\n");
 
 	if ((sockfd = socket (p->ai_family, p->ai_socktype,
 			      p->ai_protocol)) == -1)
 	{
 	  perror ("server: socket");
+    printf("server connection\n");
 	  continue;
 	}
       if (setsockopt (sockfd, SOL_SOCKET, SO_REUSEADDR, &yes,
 		      sizeof (int)) == -1)
 	{
 	  perror ("setsockopt");
+    printf("setsockopt connection\n");
 	  exit (1);
 	}
       if (bind (sockfd, p->ai_addr, p->ai_addrlen) == -1)
 	{
 	  close (sockfd);
 	  perror ("server: bind");
+    printf("bin connection\n");
 	  continue;
 	}
       break;
@@ -82,11 +91,13 @@ int main (void)
   if (p == NULL)
     {
       fprintf (stderr, "server: failed to bind\n");
+      printf("server connection failed");
       exit (1);
     }
   if (listen (sockfd, BACKLOG) == -1)
     {
       perror ("listen");
+      printf("listening\n");
       exit (1);
     }
   sa.sa_handler = sigchld_handler;	// reap all dead processes
@@ -97,9 +108,9 @@ int main (void)
       perror ("sigaction");
       exit (1);
     }
-  printf ("server: waiting for connections...\n");
   while (1)
     {				// main accept() loop
+      printf("entering while loop\n");
       sin_size = sizeof their_addr;
       new_fd = accept (sockfd, (struct sockaddr *) &their_addr, &sin_size);
       if (new_fd == -1)
@@ -112,14 +123,26 @@ int main (void)
       printf ("server: got connection from %s\n", s);
       if (!fork ())
 	{			// this is the child process
+    printf("this is the child process\n");
 	  close (sockfd);	// child doesn't need the listener
-	    if (send (new_fd, "Hello, world!", 13, 0) == -1)
-	    perror ("send");
+	   perror ("send");
+    if (send (new_fd, "Hello, world!", 13, 0) == -1)
 	  close (new_fd);
 	  exit (0);
 	}
+  //else{
       close (new_fd);
 // parent doesn't need this
+if ((numbytes = recv (sockfd, buf, MAXDATASIZE - 1, 0)) == -1)
+  {
+    perror ("recv");
+    exit (1);
+  }
+  buf[numbytes] = '\0';
+  printf ("server: received '%s'\n", buf);
+  close (sockfd);
+  exit(0);
+//}
     }
   return 0;
 }

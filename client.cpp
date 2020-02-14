@@ -8,14 +8,16 @@
 #include<netinet/in.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#define PORT "3490"		// the port client will be connecting to
+#define PORT "4950"		// the port client will be connecting to
 #define MAXDATASIZE 100		// max number of bytes we can get at once
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr (struct sockaddr *sa)
 {
+    printf("*get_in_addr\n");
   if (sa->sa_family == AF_INET)
     {
       return &(((struct sockaddr_in *) sa)->sin_addr);
+        printf("the beginning\n");
     }
   return &(((struct sockaddr_in6 *) sa)->sin6_addr);
 }
@@ -24,6 +26,7 @@ int
 main (int argc, char *argv[])
 //24 https:			//beej.us/guide/bgnet/examples/client.cCLIENT-SERVER BACKGROUND
 {
+    printf("the beginning\n");
   int sockfd, numbytes;
   char buf[MAXDATASIZE];
   struct addrinfo hints, *servinfo, *p;
@@ -40,6 +43,7 @@ main (int argc, char *argv[])
   if ((rv = getaddrinfo (argv[1], PORT, &hints, &servinfo)) != 0)
     {
       fprintf (stderr, "getaddrinfo: %s\n", gai_strerror (rv));
+        printf("getaddrinfo\n");
       return 1;
     }
 // loop through all the results and connect to the first we can
@@ -49,12 +53,14 @@ main (int argc, char *argv[])
 			    p->ai_protocol)) == -1)
 	{
 	  perror ("client: socket");
+    printf("server connection\n");
 	  continue;
 	}
       if (connect (sockfd, p->ai_addr, p->ai_addrlen) == -1)
 	{
 	  close (sockfd);
 	  perror ("client: connect");
+    printf("connect connection\n");
 	  continue;
 	}
       break;
